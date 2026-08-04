@@ -70,8 +70,8 @@ SROIE may be useful later as an optional secondary receipt dataset, but it is no
 
 ## Development Phases
 
-- Phase 0: Project framing and planning.
-- Phase 1: Invoice upload and raw OCR vertical slice.
+- Phase 0: Project framing and planning. - Completed
+- Phase 1: Invoice upload and raw OCR vertical slice. - In progress
 - Phase 2: Structured field extraction and review.
 - Phase 3: Data persistence and expense ledger.
 - Phase 4: Exact and near-duplicate detection.
@@ -84,11 +84,9 @@ SROIE may be useful later as an optional secondary receipt dataset, but it is no
 - Phase 11: Portfolio documentation and final evaluation.
 - Phase 12: Optional AWS SageMaker experiment.
 
-## Current Status
+## Current status
 
-Phase 0 is focused on project framing and planning documentation. No application features, datasets, models, databases, Docker setup, orchestration, cloud resources, or CI/CD workflows have been implemented yet.
-
-Phase 1 is the next implementation phase.
+Phase 1 in progress: building the invoice upload and raw OCR workflow.
 
 ## Privacy and Limitations
 
