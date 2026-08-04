@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap keeps LedgerLens focused on one practical step at a time. Phase 0 covers planning only. Phase 1 is the next implementation phase.
+This roadmap keeps LedgerLens focused on one practical step at a time.
 
 ## Phase 0 - Project Framing and Planning
 
