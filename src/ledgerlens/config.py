@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     """LedgerLens runtime settings."""
 
     app_name: str = "LedgerLens"
-    environment: str = "development"
+    environment: str = "Development"
     debug: bool = False
     allowed_image_extensions: tuple[str, ...] = ("jpg", "jpeg", "png")
     allowed_document_extensions: tuple[str, ...] = ("pdf",)
