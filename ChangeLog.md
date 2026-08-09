@@ -32,3 +32,26 @@
   - checks whether the extension is valid
   - checks whether the file size is valid
   - return pydantic model which will be used by the [home.py](app\Home.py) to show the errors
+- created [document_loader.py](src\ledgerlens\ingestion\document_loader.py)
+  - created 3 functions:
+    - create_document_preview()
+    - image_handling()
+      - loading the filebytes using pillow and bytesio
+      - then if its an image then returning them using pydantic model DocumentPreview
+    - doc_handling()
+      - opening the filebytes using pymupdf
+      - create a matrix, why?: By default, PyMuPDF renders PDF pages at standard screen resolution (72 DPI). Rendering at 72 DPI often results in blurry text. Scaling by 1.5× bumps the effective resolution up to 108 DPI, making the text sharper and easier to read or feed into OCR engines.
+      - convert the first page into pixmap
+      - conver Pixmap object into a byte string in the PPM (Portable Pixmap) format
+      - then loading the Image into PIL (Pillow
+      - then return the image
+- added preview setup in the streamlit file [home.py](app\Home.py) 
+- created a file [ocr_engine.py](src\ledgerlens\extraction\ocr_engine.py)
+  - file takes the image sent from the streamlit
+  - extracts text from image using pytesseract 
+  - and returns the text
+  - minimal error handling is also added
+- added OCR extract button in the streamlit file [home.py](app\Home.py) 
+  - this views the text return from the [ocr_engine.py](src\ledgerlens\extraction\ocr_engine.py)
+
+# Phase 2 - Structured Field Extraction and Review

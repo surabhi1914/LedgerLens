@@ -39,10 +39,12 @@ Expected deliverable: A local app that can upload an invoice and show raw OCR te
 
 Completion checklist:
 
-- [ ] Upload control works for supported formats.
-- [ ] Invalid files are rejected safely.
-- [ ] OCR output is displayed.
-- [ ] Errors are handled without crashing the app.
+- [X] Upload control works for supported formats.
+- [X] Invalid files are rejected safely.
+- [X] OCR output is displayed.
+- [x] Errors are handled without crashing the app.
+
+Comments after execution: Phase 1 used incremental smoke testing during implementation; systematic OCR evaluation is deferred until structured extraction evaluation.
 
 ## Phase 2 - Structured Field Extraction and Review
 

@@ -71,8 +71,8 @@ SROIE may be useful later as an optional secondary receipt dataset, but it is no
 ## Development Phases
 
 - Phase 0: Project framing and planning. - Completed
-- Phase 1: Invoice upload and raw OCR vertical slice. - In progress
-- Phase 2: Structured field extraction and review.
+- Phase 1: Invoice upload and raw OCR vertical slice. - Completed
+- Phase 2: Structured field extraction and review. - In Progress
 - Phase 3: Data persistence and expense ledger.
 - Phase 4: Exact and near-duplicate detection.
 - Phase 5: Expense categorization and MLflow tracking.
@@ -86,7 +86,8 @@ SROIE may be useful later as an optional secondary receipt dataset, but it is no
 
 ## Current status
 
-Phase 1 in progress: building the invoice upload and raw OCR workflow.
+Phase 2 in progress - Structured Field Extraction and Review.
+Currently trying to structure the text after OCR workflow
 
 ## Privacy and Limitations
 

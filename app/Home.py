@@ -1,6 +1,8 @@
 import streamlit as st
 
 from ledgerlens.config import settings
+from ledgerlens.extraction.ocr_engine import extract_text
+from ledgerlens.ingestion.document_loader import create_document_preview
 from ledgerlens.ingestion.file_validator import validate_upload
 
 # -------Intro config-------
@@ -26,6 +28,14 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+# session state handling
+if "show_image" not in st.session_state:
+    st.session_state.show_image = False
+if "success_dialog_shown" not in st.session_state:
+    st.session_state.success_dialog_shown = False
+if "extracted_text" not in st.session_state:
+    st.session_state.extracted_text = ""
 
 
 # -------dialog section-------
@@ -116,13 +126,21 @@ st.warning(
     icon="🛡️",
 )
 
+
 # -------Main uploading section-------
+def reset_preview():
+    st.session_state.show_image = False
+    st.session_state.success_dialog_shown = False
+    st.session_state.extracted_text = ""
+
+
 st.header("Please upload the invoice document for the analysis.")
 uploaded_file = st.file_uploader(
     "Choose a file",
     type=settings.allowed_document_extensions + settings.allowed_image_extensions,
     max_upload_size=settings.max_upload_size_mb,
     accept_multiple_files=False,
+    on_change=reset_preview,
 )
 
 
@@ -131,8 +149,55 @@ if uploaded_file is not None:
         file_name=uploaded_file.name,
         file_size_bytes=uploaded_file.size,
     )
+
     if validation_result.is_valid:
-        success_upload_dialog(uploaded_file, validation_result.extension)
+        if not st.session_state.success_dialog_shown:
+            st.session_state.success_dialog_shown = True
+            success_upload_dialog(uploaded_file, validation_result.extension)
+
+        file_bytes = uploaded_file.getvalue()
+        preview_result = create_document_preview(
+            file_bytes, validation_result.extension
+        )
+
+        ## --- Preview image section ----
+
+        if not preview_result.is_successful:
+            st.error(f"There is an error\n : {preview_result.error_message}")
+        else:
+            if st.button("📸 Preview the file"):
+                st.session_state.show_image = True
+
+            if st.session_state.show_image:
+                # hide button
+                if st.button("Hide Image"):
+                    st.session_state.show_image = False
+                    st.rerun()
+                if preview_result.page_count == 1:
+                    st.image(preview_result.image, caption="Only one page")
+                else:
+                    st.image(
+                        preview_result.image,
+                        caption=f"Showing 1 out of {preview_result.page_count} pages",
+                    )
+
+            ## --- Extract image section ----
+            if st.button("📸 Extract text"):
+                text = extract_text(preview_result.image)
+                if text.is_successful:
+                    st.session_state.extracted_text = text.text
+                else:
+                    st.error(f"🚨Error Message: {text.error_message}")
+            if st.session_state.extracted_text:
+                st.text_area(
+                    "📝 Extracted Text",
+                    value=st.session_state.extracted_text,
+                    height=300,
+                    disabled=False,
+                    key="ocr_output",
+                )
 
     else:
         error_upload_dialog(uploaded_file, validation_result.error_message)
+        st.session_state.show_image = False
+        st.session_state.success_dialog_shown = False
