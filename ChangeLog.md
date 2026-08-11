@@ -53,5 +53,23 @@
   - minimal error handling is also added
 - added OCR extract button in the streamlit file [home.py](app\Home.py) 
   - this views the text return from the [ocr_engine.py](src\ledgerlens\extraction\ocr_engine.py)
+- final look
+  ![alt text](assets\changelog_images\phase_1.png)
 
 # Phase 2 - Structured Field Extraction and Review
+- created [schema.py](src\ledgerlens\extraction\schema.py)
+  - Added Invoice Extraction class
+- created a [text_normalizer.py](src\ledgerlens\extraction\text_normalizer.py)
+  - removed unwanted tab\newlines\whitespaces from the raw OCR text
+- updated the new normalized text to be viewed in the extract text section
+- created a following parser files: the name suggests the clear purpose of the file
+  - [invoice_number_parser.py](src\ledgerlens\extraction\invoice_number_parser.py)
+  - [currency_parser.py](src\ledgerlens\extraction\currency_parser.py)
+  - [invoice_date_parser.py](src\ledgerlens\extraction\invoice_date_parser.py)
+  - [money_parser.py](src\ledgerlens\extraction\money_parser.py)
+  - [subtotal_parser.py](src\ledgerlens\extraction\subtotal_parser.py)
+  - [total_parser.py](src\ledgerlens\extraction\total_parser.py)
+  - [tax_parser.py](src\ledgerlens\extraction\tax_parser.py)
+  - [vendor_parser.py](src\ledgerlens\extraction\vendor_parser.py)
+- created a orchestrator - [field_parser.py](src\ledgerlens\extraction\field_parser.py)
+

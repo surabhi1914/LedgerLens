@@ -1,7 +1,9 @@
 import streamlit as st
 
 from ledgerlens.config import settings
+from ledgerlens.extraction.invoice_number_parser import extract_invoice_number
 from ledgerlens.extraction.ocr_engine import extract_text
+from ledgerlens.extraction.text_normalizer import normalize_ocr_text
 from ledgerlens.ingestion.document_loader import create_document_preview
 from ledgerlens.ingestion.file_validator import validate_upload
 
@@ -109,7 +111,7 @@ image_extensions = (", ".join(settings.allowed_image_extensions)).upper()
 
 # -------Development details-------
 st.header("Current Development Phase")
-st.write("Phase 1 in progress: building the invoice upload and raw OCR workflow.")
+st.write("Phase 2 in progress - Structuring Field Extraction and Review the OCR text.")
 with st.expander("Development details"):
     st.write(f"App Name : {settings.app_name}")
     st.write(f"Environment : {settings.environment}")
@@ -185,7 +187,9 @@ if uploaded_file is not None:
             if st.button("📸 Extract text"):
                 text = extract_text(preview_result.image)
                 if text.is_successful:
-                    st.session_state.extracted_text = text.text
+                    normalized_text = normalize_ocr_text(text.text)
+                    st.session_state.extracted_text = normalized_text
+
                 else:
                     st.error(f"🚨Error Message: {text.error_message}")
             if st.session_state.extracted_text:
@@ -196,6 +200,8 @@ if uploaded_file is not None:
                     disabled=False,
                     key="ocr_output",
                 )
+                inv = extract_invoice_number(st.session_state.extracted_text)
+                st.write(f"Invoice number: {inv}")
 
     else:
         error_upload_dialog(uploaded_file, validation_result.error_message)
