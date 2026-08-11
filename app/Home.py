@@ -249,12 +249,12 @@ if st.button("📸 Extract invoice fields"):
         st.warning("Please extract the raw text first.")
     else:
         with st.spinner("Extracting structured fields..."):
-            # 1. Run extraction and store domain model (or None)
+            # Run extraction and store domain model (or None)
             fields = extract_invoice_fields(st.session_state.extracted_text)
             st.session_state.invoice_fields = fields
 
-            # 2. Populate the review keys directly into session state.
-            # This ensures that re-running extraction updates the widget state explicitly!
+            # Populate the review keys directly into session state.
+            # Ensures that re-running extraction updates the widget state explicitly!
             st.session_state.review_vendor = format_ui_value(
                 getattr(fields, "vendor", None)
             )
