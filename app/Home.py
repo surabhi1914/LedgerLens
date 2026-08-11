@@ -1,7 +1,7 @@
 import streamlit as st
 
 from ledgerlens.config import settings
-from ledgerlens.extraction.invoice_number_parser import extract_invoice_number
+from ledgerlens.extraction.field_parser import extract_invoice_fields
 from ledgerlens.extraction.ocr_engine import extract_text
 from ledgerlens.extraction.text_normalizer import normalize_ocr_text
 from ledgerlens.ingestion.document_loader import create_document_preview
@@ -38,6 +38,8 @@ if "success_dialog_shown" not in st.session_state:
     st.session_state.success_dialog_shown = False
 if "extracted_text" not in st.session_state:
     st.session_state.extracted_text = ""
+if "invoice_fields" not in st.session_state:
+    st.session_state.invoice_fields = ""
 
 
 # -------dialog section-------
@@ -133,7 +135,21 @@ st.warning(
 def reset_preview():
     st.session_state.show_image = False
     st.session_state.success_dialog_shown = False
-    st.session_state.extracted_text = ""
+    """Clear extracted fields and review widget keys from session state."""
+    keys_to_clear = [
+        "extracted_text",
+        "invoice_fields",
+        "review_vendor",
+        "review_invoice_number",
+        "review_invoice_date",
+        "review_subtotal",
+        "review_tax",
+        "review_total",
+        "review_currency",
+    ]
+    for key in keys_to_clear:
+        if key in st.session_state:
+            del st.session_state[key]
 
 
 st.header("Please upload the invoice document for the analysis.")
@@ -192,18 +208,84 @@ if uploaded_file is not None:
 
                 else:
                     st.error(f"🚨Error Message: {text.error_message}")
-            if st.session_state.extracted_text:
-                st.text_area(
-                    "📝 Extracted Text",
-                    value=st.session_state.extracted_text,
-                    height=300,
-                    disabled=False,
-                    key="ocr_output",
-                )
-                inv = extract_invoice_number(st.session_state.extracted_text)
-                st.write(f"Invoice number: {inv}")
+
+            ## --- Extract invoice fields section ----
+            if st.button("📸 Extract invoice fields"):
+                if not st.session_state.get("extracted_text"):
+                    st.warning("Please extract the text first.")
+                else:
+                    with st.spinner("Extracting structured fields..."):
+                        st.session_state.invoice_fields = extract_invoice_fields(
+                            st.session_state.extracted_text
+                        )
 
     else:
         error_upload_dialog(uploaded_file, validation_result.error_message)
         st.session_state.show_image = False
         st.session_state.success_dialog_shown = False
+
+if "extracted_text" in st.session_state and st.session_state.extracted_text:
+    st.subheader("Review Raw Extracted Information")
+    st.text_area(
+        "📝 Extracted Text",
+        value=st.session_state.extracted_text,
+        height=300,
+        disabled=False,
+        key="ocr_output",
+    )
+
+
+def format_ui_value(val) -> str:
+    """Format any extracted value (Decimal, Date, None) into a display string."""
+    if val is None:
+        return ""
+    return str(val)
+
+
+# --- Extract Image / Fields Section ---
+
+if st.button("📸 Extract invoice fields"):
+    if not st.session_state.get("extracted_text"):
+        st.warning("Please extract the raw text first.")
+    else:
+        with st.spinner("Extracting structured fields..."):
+            # 1. Run extraction and store domain model (or None)
+            fields = extract_invoice_fields(st.session_state.extracted_text)
+            st.session_state.invoice_fields = fields
+
+            # 2. Populate the review keys directly into session state.
+            # This ensures that re-running extraction updates the widget state explicitly!
+            st.session_state.review_vendor = format_ui_value(
+                getattr(fields, "vendor", None)
+            )
+            st.session_state.review_invoice_number = format_ui_value(
+                getattr(fields, "invoice_number", None)
+            )
+            st.session_state.review_invoice_date = format_ui_value(
+                getattr(fields, "invoice_date", None)
+            )
+            st.session_state.review_subtotal = format_ui_value(
+                getattr(fields, "subtotal", None)
+            )
+            st.session_state.review_tax = format_ui_value(getattr(fields, "tax", None))
+            st.session_state.review_total = format_ui_value(
+                getattr(fields, "total", None)
+            )
+            st.session_state.review_currency = format_ui_value(
+                getattr(fields, "currency", None)
+            )
+
+
+# --- Review & Edit Extracted Fields Section ---
+
+if st.session_state.get("invoice_fields") is not None:
+    st.subheader("Review Extracted Information")
+    st.caption("Inspect and correct any fields before committing.")
+
+    st.text_input("Vendor", key="review_vendor")
+    st.text_input("Invoice Number", key="review_invoice_number")
+    st.text_input("Invoice Date", key="review_invoice_date")
+    st.text_input("Subtotal", key="review_subtotal")
+    st.text_input("Tax", key="review_tax")
+    st.text_input("Total", key="review_total")
+    st.text_input("Currency", key="review_currency")
