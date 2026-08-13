@@ -1,13 +1,14 @@
 import streamlit as st
 
 from ledgerlens.config import settings
+from ledgerlens.extraction.consistency_validator import check_invoice_consistency
 from ledgerlens.extraction.field_parser import extract_invoice_fields
 from ledgerlens.extraction.ocr_engine import extract_text
-from ledgerlens.extraction.text_normalizer import normalize_ocr_text
+from ledgerlens.extraction.review_validator import validate_reviewed_invoice
 from ledgerlens.ingestion.document_loader import create_document_preview
 from ledgerlens.ingestion.file_validator import validate_upload
 
-# -------Intro config-------
+# ------- Page config -------
 st.set_page_config(
     page_title=settings.app_name,
     page_icon="📊",
@@ -18,7 +19,8 @@ st.set_page_config(
 st.title(settings.app_name)
 st.write("An AI-assisted invoice extraction and expense management project.")
 
-# -------CSS for the page-------
+
+# ------- CSS -------
 # Custom CSS for background gradient
 st.markdown(
     """
@@ -31,7 +33,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# session state handling
+
+# ------- Session-state initialization -------
 if "show_image" not in st.session_state:
     st.session_state.show_image = False
 if "success_dialog_shown" not in st.session_state:
@@ -39,10 +42,12 @@ if "success_dialog_shown" not in st.session_state:
 if "extracted_text" not in st.session_state:
     st.session_state.extracted_text = ""
 if "invoice_fields" not in st.session_state:
-    st.session_state.invoice_fields = ""
+    st.session_state.invoice_fields = None
+if "confirmed_invoice" not in st.session_state:
+    st.session_state.confirmed_invoice = None
 
 
-# -------dialog section-------
+# ------- Dialog functions -------
 @st.dialog("✅ Upload Successful")
 def success_upload_dialog(uploaded_file, extension):
     st.write(
@@ -61,7 +66,7 @@ def error_upload_dialog(uploaded_file, error_message):
     st.write(f"🚨 Error uploading file '{uploaded_file.name}': {error_message}")
 
 
-# -------Sidebar content-------
+# ------- Sidebar / page description -------
 st.sidebar.title("About the Page")
 st.sidebar.markdown(
     "Explain that the current development phase will support: "
@@ -70,13 +75,13 @@ st.sidebar.markdown(
     "\n - Preview"
     "\n - RAW OCR"
 )
-st.sidebar.info(
-    " ⚠️ Structured field extraction, categorization, and duplicate detection"
-    " are not implemented yet."
-)
+# st.sidebar.info(
+#     " ⚠️ Structured field extraction, categorization, and duplicate detection"
+#     " are not implemented yet."
+# )
 
 
-# -------content-------
+# ------- Planned Workflow / Development details / Privacy warning -------
 st.header("Planned Workflow")
 st.markdown(
     """
@@ -111,7 +116,6 @@ Allowed operations for now
 extensions = (", ".join(settings.allowed_document_extensions)).upper()
 image_extensions = (", ".join(settings.allowed_image_extensions)).upper()
 
-# -------Development details-------
 st.header("Current Development Phase")
 st.write("Phase 2 in progress - Structuring Field Extraction and Review the OCR text.")
 with st.expander("Development details"):
@@ -131,11 +135,8 @@ st.warning(
 )
 
 
-# -------Main uploading section-------
-def reset_preview():
-    st.session_state.show_image = False
-    st.session_state.success_dialog_shown = False
-    """Clear extracted fields and review widget keys from session state."""
+# ------- Helper functions -------
+def clear_structured_extraction_state():
     keys_to_clear = [
         "extracted_text",
         "invoice_fields",
@@ -146,12 +147,31 @@ def reset_preview():
         "review_tax",
         "review_total",
         "review_currency",
+        "confirmed_invoice",
     ]
     for key in keys_to_clear:
         if key in st.session_state:
             del st.session_state[key]
 
 
+def reset_preview():
+    st.session_state.show_image = False
+    st.session_state.success_dialog_shown = False
+    clear_structured_extraction_state()
+
+
+def format_ui_value(val) -> str:
+    """Format any extracted value (Decimal, Date, None) into a display string."""
+    if val is None:
+        return ""
+    return str(val)
+
+
+def invalidate_confirmation():
+    st.session_state.confirmed_invoice = None
+
+
+# ------- UPLOAD -------
 st.header("Please upload the invoice document for the analysis.")
 uploaded_file = st.file_uploader(
     "Choose a file",
@@ -162,6 +182,7 @@ uploaded_file = st.file_uploader(
 )
 
 
+# ------- VALIDATION -------
 if uploaded_file is not None:
     validation_result = validate_upload(
         file_name=uploaded_file.name,
@@ -174,6 +195,8 @@ if uploaded_file is not None:
             success_upload_dialog(uploaded_file, validation_result.extension)
 
         file_bytes = uploaded_file.getvalue()
+
+        # ------- PREVIEW -------
         preview_result = create_document_preview(
             file_bytes, validation_result.extension
         )
@@ -199,31 +222,25 @@ if uploaded_file is not None:
                         caption=f"Showing 1 out of {preview_result.page_count} pages",
                     )
 
+            # ------- OCR -------
             ## --- Extract image section ----
             if st.button("📸 Extract text"):
                 text = extract_text(preview_result.image)
                 if text.is_successful:
-                    normalized_text = normalize_ocr_text(text.text)
-                    st.session_state.extracted_text = normalized_text
+                    clear_structured_extraction_state()
+                    st.session_state.extracted_text = text.text
 
                 else:
                     st.error(f"🚨Error Message: {text.error_message}")
 
-            ## --- Extract invoice fields section ----
-            if st.button("📸 Extract invoice fields"):
-                if not st.session_state.get("extracted_text"):
-                    st.warning("Please extract the text first.")
-                else:
-                    with st.spinner("Extracting structured fields..."):
-                        st.session_state.invoice_fields = extract_invoice_fields(
-                            st.session_state.extracted_text
-                        )
-
     else:
+        # ------- INVALID-UPLOAD branch -------
         error_upload_dialog(uploaded_file, validation_result.error_message)
         st.session_state.show_image = False
         st.session_state.success_dialog_shown = False
 
+
+# ------- RAW OCR DISPLAY -------
 if "extracted_text" in st.session_state and st.session_state.extracted_text:
     st.subheader("Review Raw Extracted Information")
     st.text_area(
@@ -234,58 +251,86 @@ if "extracted_text" in st.session_state and st.session_state.extracted_text:
         key="ocr_output",
     )
 
+    # ------- EXTRACT INVOICE FIELDS -------
+    if st.button("📸 Extract invoice fields"):
+        if not st.session_state.get("extracted_text"):
+            st.warning("Please extract the raw text first.")
+        else:
+            with st.spinner("Extracting structured fields..."):
+                # Run extraction and store domain model (or None)
+                fields = extract_invoice_fields(st.session_state.extracted_text)
+                st.session_state.confirmed_invoice = None
+                st.session_state.invoice_fields = fields
 
-def format_ui_value(val) -> str:
-    """Format any extracted value (Decimal, Date, None) into a display string."""
-    if val is None:
-        return ""
-    return str(val)
-
-
-# --- Extract Image / Fields Section ---
-
-if st.button("📸 Extract invoice fields"):
-    if not st.session_state.get("extracted_text"):
-        st.warning("Please extract the raw text first.")
-    else:
-        with st.spinner("Extracting structured fields..."):
-            # Run extraction and store domain model (or None)
-            fields = extract_invoice_fields(st.session_state.extracted_text)
-            st.session_state.invoice_fields = fields
-
-            # Populate the review keys directly into session state.
-            # Ensures that re-running extraction updates the widget state explicitly!
-            st.session_state.review_vendor = format_ui_value(
-                getattr(fields, "vendor", None)
-            )
-            st.session_state.review_invoice_number = format_ui_value(
-                getattr(fields, "invoice_number", None)
-            )
-            st.session_state.review_invoice_date = format_ui_value(
-                getattr(fields, "invoice_date", None)
-            )
-            st.session_state.review_subtotal = format_ui_value(
-                getattr(fields, "subtotal", None)
-            )
-            st.session_state.review_tax = format_ui_value(getattr(fields, "tax", None))
-            st.session_state.review_total = format_ui_value(
-                getattr(fields, "total", None)
-            )
-            st.session_state.review_currency = format_ui_value(
-                getattr(fields, "currency", None)
-            )
+                # Populate the review keys directly into session state.
+                # Ensures that re-running extraction updates the widget state explicitly!
+                st.session_state.review_vendor = format_ui_value(
+                    getattr(fields, "vendor", None)
+                )
+                st.session_state.review_invoice_number = format_ui_value(
+                    getattr(fields, "invoice_number", None)
+                )
+                st.session_state.review_invoice_date = format_ui_value(
+                    getattr(fields, "invoice_date", None),
+                )
+                st.session_state.review_subtotal = format_ui_value(
+                    getattr(fields, "subtotal", None)
+                )
+                st.session_state.review_tax = format_ui_value(
+                    getattr(fields, "tax", None)
+                )
+                st.session_state.review_total = format_ui_value(
+                    getattr(fields, "total", None)
+                )
+                st.session_state.review_currency = format_ui_value(
+                    getattr(fields, "currency", None)
+                )
 
 
-# --- Review & Edit Extracted Fields Section ---
-
+# ------- REVIEW + EDIT -------
 if st.session_state.get("invoice_fields") is not None:
     st.subheader("Review Extracted Information")
     st.caption("Inspect and correct any fields before committing.")
 
-    st.text_input("Vendor", key="review_vendor")
-    st.text_input("Invoice Number", key="review_invoice_number")
-    st.text_input("Invoice Date", key="review_invoice_date")
-    st.text_input("Subtotal", key="review_subtotal")
-    st.text_input("Tax", key="review_tax")
-    st.text_input("Total", key="review_total")
-    st.text_input("Currency", key="review_currency")
+    st.text_input("Vendor", key="review_vendor", on_change=invalidate_confirmation)
+    st.text_input(
+        "Invoice Number", key="review_invoice_number", on_change=invalidate_confirmation
+    )
+    st.text_input(
+        "Invoice Date", key="review_invoice_date", on_change=invalidate_confirmation
+    )
+    st.text_input("Subtotal", key="review_subtotal", on_change=invalidate_confirmation)
+    st.text_input("Tax", key="review_tax", on_change=invalidate_confirmation)
+    st.text_input("Total", key="review_total", on_change=invalidate_confirmation)
+    st.text_input("Currency", key="review_currency", on_change=invalidate_confirmation)
+
+    # ------- CONFIRM -------
+    if st.button("Confirm"):
+        validated_result = validate_reviewed_invoice(
+            vendor=st.session_state.review_vendor,
+            invoice_number=st.session_state.review_invoice_number,
+            invoice_date=st.session_state.review_invoice_date,
+            subtotal=st.session_state.review_subtotal,
+            tax=st.session_state.review_tax,
+            total=st.session_state.review_total,
+            currency=st.session_state.review_currency,
+        )
+        if not validated_result.is_valid:
+            st.session_state.confirmed_invoice = None
+            for field, error in validated_result.errors.items():
+                st.error(f"{field}:{error}")
+        else:
+            st.success("Validated successfully")
+            st.session_state.confirmed_invoice = validated_result.invoice
+
+
+# ------- CONFIRMED INFORMATION -------
+if "confirmed_invoice" in st.session_state and st.session_state.confirmed_invoice:
+    st.subheader("Confirmed Information by user")
+    invoice_data = st.session_state.confirmed_invoice.model_dump()
+    for field_name, value in invoice_data.items():
+        st.write(f"**{field_name}:** {value}")
+    warnings = check_invoice_consistency(st.session_state.confirmed_invoice)
+    if warnings:
+        for warning in warnings:
+            st.warning(f"{warning}")
