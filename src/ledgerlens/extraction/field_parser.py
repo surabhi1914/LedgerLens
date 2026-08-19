@@ -1,4 +1,5 @@
 from ledgerlens.extraction.currency_parser import extract_currency
+from ledgerlens.extraction.discount_parser import extract_discount
 from ledgerlens.extraction.invoice_date_parser import extract_invoice_date
 from ledgerlens.extraction.invoice_number_parser import extract_invoice_number
 from ledgerlens.extraction.schema import InvoiceExtraction
@@ -24,6 +25,7 @@ def extract_invoice_fields(raw_text: str) -> InvoiceExtraction:
     tax = extract_tax(text)
 
     subtotal = extract_subtotal(text)
+    discount = extract_discount(text)
     total = extract_total(text)
     currency = extract_currency(text)
 
@@ -33,6 +35,7 @@ def extract_invoice_fields(raw_text: str) -> InvoiceExtraction:
         invoice_date=invoice_date,
         tax=tax,
         subtotal=subtotal,
+        discount=discount,
         total=total,
         currency=currency,
     )

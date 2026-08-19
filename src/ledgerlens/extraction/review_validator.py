@@ -73,6 +73,7 @@ def validate_reviewed_invoice(
     subtotal: str,
     tax: str,
     total: str,
+    discount: str,
     currency: str,
 ) -> ReviewValidationResult:
     errors: dict[str, str] = {}
@@ -84,6 +85,7 @@ def validate_reviewed_invoice(
     parsed_date = _validate_date("invoice_date", invoice_date, errors)
     parsed_subtotal = _validate_money("subtotal", subtotal, errors)
     parsed_tax = _validate_money("tax", tax, errors)
+    parsed_discount = _validate_money("tax", discount, errors)
     parsed_total = _validate_money("total", total, errors)
     parsed_currency = _validate_currency("currency", currency, errors)
 
@@ -96,6 +98,7 @@ def validate_reviewed_invoice(
         invoice_date=parsed_date,
         subtotal=parsed_subtotal,
         tax=parsed_tax,
+        discount=parsed_discount,
         total=parsed_total,
         currency=parsed_currency,
     )

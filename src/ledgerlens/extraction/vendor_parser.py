@@ -3,18 +3,23 @@ import re
 # Document headers and common field labels that should never be selected as a vendor
 IGNORE_PATTERNS = [
     # Document headers
-    r"^\s*(?:tax\s+)?invoice\s*$",
-    r"^\s*receipt\s*$",
-    r"^\s*bill\s*$",
-    r"^\s*statement\s*$",
-    # Explicit vendor labels (prevents Stage B fallback from picking up "Vendor: 123456")
+    r"^\s*(?:tax\s+)?invoice\b",
+    r"^\s*receipt\b",
+    r"^\s*bill\b",
+    r"^\s*statement\b",
+    # Explicit vendor labels
     r"^\s*(?:vendor|supplier|seller|from)\b",
-    # Common field labels
-    r"^\s*invoice\s*(?:no\.?|number|\#|date|total|amount)",
-    r"^\s*(?:bill|ship)\s*to",
-    r"^\s*(?:date|total|subtotal|tax|amount\s+due|balance\s+due)",
+    # Common field labels & headers
+    r"^\s*invoice\s*(?:no\.?|number|\#|date|total|amount)\b",
+    r"^\s*(?:bill|ship)\s*to\b",
+    # Dates & Financial Summary Labels
+    (
+        r"^\s*(?:due\s+date|payment\s+date|ship\s+date|billing\s+date|date|"
+        r"total|subtotal|tax|amount\s+due|balance\s+due)\b"
+    ),
+    # Contact Information & Address Labels
+    r"^\s*(?:address|tel|telephone|phone|email|site|website)\b",
 ]
-
 # Combined compiled pattern for performance
 _IGNORE_RE = re.compile("|".join(IGNORE_PATTERNS), flags=re.IGNORECASE)
 

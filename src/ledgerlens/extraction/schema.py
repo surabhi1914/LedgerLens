@@ -45,3 +45,8 @@ class InvoiceExtraction(BaseModel):
         min_length=3,
         max_length=3,
     )
+
+    discount: Decimal | None = Field(
+        default=None,
+        description="Discount deduction amount",
+    )

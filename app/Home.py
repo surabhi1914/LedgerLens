@@ -148,6 +148,7 @@ def clear_structured_extraction_state():
         "review_total",
         "review_currency",
         "confirmed_invoice",
+        "review_discount",
     ]
     for key in keys_to_clear:
         if key in st.session_state:
@@ -259,6 +260,7 @@ if "extracted_text" in st.session_state and st.session_state.extracted_text:
             with st.spinner("Extracting structured fields..."):
                 # Run extraction and store domain model (or None)
                 fields = extract_invoice_fields(st.session_state.extracted_text)
+                st.write("DEBUG fields:", fields)
                 st.session_state.confirmed_invoice = None
                 st.session_state.invoice_fields = fields
 
@@ -278,6 +280,9 @@ if "extracted_text" in st.session_state and st.session_state.extracted_text:
                 )
                 st.session_state.review_tax = format_ui_value(
                     getattr(fields, "tax", None)
+                )
+                st.session_state.review_discount = format_ui_value(
+                    getattr(fields, "discount", None)
                 )
                 st.session_state.review_total = format_ui_value(
                     getattr(fields, "total", None)
@@ -301,6 +306,7 @@ if st.session_state.get("invoice_fields") is not None:
     )
     st.text_input("Subtotal", key="review_subtotal", on_change=invalidate_confirmation)
     st.text_input("Tax", key="review_tax", on_change=invalidate_confirmation)
+    st.text_input("Discount", key="review_discount", on_change=invalidate_confirmation)
     st.text_input("Total", key="review_total", on_change=invalidate_confirmation)
     st.text_input("Currency", key="review_currency", on_change=invalidate_confirmation)
 
@@ -312,6 +318,7 @@ if st.session_state.get("invoice_fields") is not None:
             invoice_date=st.session_state.review_invoice_date,
             subtotal=st.session_state.review_subtotal,
             tax=st.session_state.review_tax,
+            discount=st.session_state.review_discount,
             total=st.session_state.review_total,
             currency=st.session_state.review_currency,
         )
@@ -334,3 +341,17 @@ if "confirmed_invoice" in st.session_state and st.session_state.confirmed_invoic
     if warnings:
         for warning in warnings:
             st.warning(f"{warning}")
+
+    st.write(
+        "DEBUG review:",
+        {
+            "vendor": st.session_state.review_vendor,
+            "invoice_number": st.session_state.review_invoice_number,
+            "invoice_date": st.session_state.review_invoice_date,
+            "subtotal": st.session_state.review_subtotal,
+            "tax": st.session_state.review_tax,
+            "discount": st.session_state.review_discount,
+            "total": st.session_state.review_total,
+            "currency": st.session_state.review_currency,
+        },
+    )
