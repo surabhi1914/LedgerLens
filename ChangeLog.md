@@ -72,4 +72,16 @@
   - [tax_parser.py](src\ledgerlens\extraction\tax_parser.py)
   - [vendor_parser.py](src\ledgerlens\extraction\vendor_parser.py)
 - created a orchestrator - [field_parser.py](src\ledgerlens\extraction\field_parser.py)
+- updated [home.py](app\Home.py) to show text field for the InvoiceExtraction
+  - ![alt text](assets\changelog_images\phase2-1.png)
+- created [review_validator.py](src/ledgerlens/extraction/review_validator.py)
+  - this file is the boundary between whatever the user typed and trusted structured invoice data
+- updated [home.py](app\Home.py) to show confirmed updated field information
+- created [consistency_validator.py](src/ledgerlens/extraction/consistency_validator.py)
+  - this file just checks whether subtotal + tax is indeed equal to total
+- updated [home.py](app\Home.py) to show warnings from [consistency_validator.py](src/ledgerlens/extraction/consistency_validator.py)
+  - Subtotal+tax and total mismatch is because of the discount
+    ![alt text](assets\changelog_images\phase2-2.png)
+
+
 

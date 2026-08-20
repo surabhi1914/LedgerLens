@@ -17,6 +17,8 @@ def extract_invoice_date(text: str) -> date | None:
         (                                      # CAPTURE GROUP: the date
             \d{1,2}[/-]\d{1,2}[/-]\d{4}       # MM/DD/YYYY or MM-DD-YYYY
             |
+            \d{1,2}-[a-zA-Z]{3}-\d{4}         # DD-Mon-YYYY (e.g., 20-Mar-2007)
+            |
             \d{4}-\d{1,2}-\d{1,2}             # YYYY-MM-DD only (hyphens)
         )
     """
@@ -33,6 +35,8 @@ def extract_invoice_date(text: str) -> date | None:
         \s*                                    # Optional whitespace
         (                                      # CAPTURE GROUP: the date
             \d{1,2}[/-]\d{1,2}[/-]\d{4}       # MM/DD/YYYY or MM-DD-YYYY
+            |
+            \d{1,2}-[a-zA-Z]{3}-\d{4}         # DD-Mon-YYYY (e.g., 20-Mar-2007)
             |
             \d{4}-\d{1,2}-\d{1,2}             # YYYY-MM-DD only (hyphens)
         )
@@ -54,6 +58,7 @@ def extract_invoice_date(text: str) -> date | None:
     formats = [
         "%m/%d/%Y",  # 08/02/2026
         "%m-%d-%Y",  # 08-02-2026
+        "%d-%b-%Y",  # 20-Mar-2007
         "%Y-%m-%d",  # 2026-08-02
     ]
 
