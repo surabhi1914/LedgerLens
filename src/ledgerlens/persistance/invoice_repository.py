@@ -2,7 +2,7 @@
 import sqlite3
 from typing import Any
 
-from ledgerlens.persistence.database import DB_PATH, get_connection
+from ledgerlens.persistence.database import get_connection
 from ledgerlens.persistence.models import InvoiceRecord
 
 
@@ -57,12 +57,12 @@ def save_invoice(invoice: InvoiceRecord, conn: sqlite3.Connection | None = None)
         data["currency"],
     )
 
-    if conn is not None:
+    conn = get_connection()
+    try:
         cursor = conn.execute(query, params)
         conn.commit()
+        if cursor.lastrowid is None:
+            raise RuntimeError("Database insert succeeded but no row ID was returned.")
         return cursor.lastrowid
-
-    with get_connection(DB_PATH) as connection:
-        cursor = connection.execute(query, params)
-        connection.commit()
-        return cursor.lastrowid
+    finally:
+        conn.close()
