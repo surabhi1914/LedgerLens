@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 from ledgerlens.config import settings
@@ -7,7 +8,19 @@ from ledgerlens.extraction.ocr_engine import extract_text
 from ledgerlens.extraction.review_validator import validate_reviewed_invoice
 from ledgerlens.ingestion.document_loader import create_document_preview
 from ledgerlens.ingestion.file_validator import validate_upload
+from ledgerlens.persistence.database import initialize_database
+from ledgerlens.persistence.invoice_repository import list_invoices, save_invoice
+from ledgerlens.persistence.models import InvoiceRecord
 
+
+# -----Setup database-----
+@st.cache_resource
+def setup_database() -> None:
+    """Initialize database tables once per app session lifetime."""
+    initialize_database()
+
+
+setup_database()
 # ------- Page config -------
 st.set_page_config(
     page_title=settings.app_name,
@@ -149,6 +162,8 @@ def clear_structured_extraction_state():
         "review_currency",
         "confirmed_invoice",
         "review_discount",
+        "file_name",
+        "saved_invoice_id",
     ]
     for key in keys_to_clear:
         if key in st.session_state:
@@ -170,6 +185,7 @@ def format_ui_value(val) -> str:
 
 def invalidate_confirmation():
     st.session_state.confirmed_invoice = None
+    st.session_state.saved_invoice_id = None
 
 
 # ------- UPLOAD -------
@@ -189,7 +205,7 @@ if uploaded_file is not None:
         file_name=uploaded_file.name,
         file_size_bytes=uploaded_file.size,
     )
-
+    st.session_state.file_name = uploaded_file.name
     if validation_result.is_valid:
         if not st.session_state.success_dialog_shown:
             st.session_state.success_dialog_shown = True
@@ -260,12 +276,11 @@ if "extracted_text" in st.session_state and st.session_state.extracted_text:
             with st.spinner("Extracting structured fields..."):
                 # Run extraction and store domain model (or None)
                 fields = extract_invoice_fields(st.session_state.extracted_text)
-                st.write("DEBUG fields:", fields)
                 st.session_state.confirmed_invoice = None
                 st.session_state.invoice_fields = fields
 
                 # Populate the review keys directly into session state.
-                # Ensures that re-running extraction updates the widget state explicitly!
+                # Ensures that re-running extraction updates the widget state explicitly
                 st.session_state.review_vendor = format_ui_value(
                     getattr(fields, "vendor", None)
                 )
@@ -335,23 +350,91 @@ if st.session_state.get("invoice_fields") is not None:
 if "confirmed_invoice" in st.session_state and st.session_state.confirmed_invoice:
     st.subheader("Confirmed Information by user")
     invoice_data = st.session_state.confirmed_invoice.model_dump()
-    for field_name, value in invoice_data.items():
-        st.write(f"**{field_name}:** {value}")
+    # for field_name, value in invoice_data.items():
+    #     st.write(f"**{field_name}:** {value}")
     warnings = check_invoice_consistency(st.session_state.confirmed_invoice)
     if warnings:
         for warning in warnings:
             st.warning(f"{warning}")
+    saved_invoice_id = st.session_state.get("saved_invoice_id")
+    if saved_invoice_id is None:
+        if st.button("Save Invoice"):
+            record = InvoiceRecord(
+                source_filename=st.session_state.file_name,
+                vendor=invoice_data["vendor"],
+                invoice_number=invoice_data["invoice_number"],
+                invoice_date=invoice_data["invoice_date"],
+                subtotal=invoice_data["subtotal"],
+                tax=invoice_data["tax"],
+                discount=invoice_data["discount"],
+                total=invoice_data["total"],
+                currency=invoice_data["currency"],
+            )
 
-    st.write(
-        "DEBUG review:",
-        {
-            "vendor": st.session_state.review_vendor,
-            "invoice_number": st.session_state.review_invoice_number,
-            "invoice_date": st.session_state.review_invoice_date,
-            "subtotal": st.session_state.review_subtotal,
-            "tax": st.session_state.review_tax,
-            "discount": st.session_state.review_discount,
-            "total": st.session_state.review_total,
-            "currency": st.session_state.review_currency,
-        },
+            # Persist and store generated ID in session state
+            invoice_id = save_invoice(record)
+            st.session_state["saved_invoice_id"] = invoice_id
+
+            # Force rerender to show confirmation view immediately
+            st.rerun()
+    else:
+        st.success(
+            "Invoice saved successfully!"
+            f"(Record #{st.session_state['saved_invoice_id']})"
+        )
+
+
+st.divider()
+st.subheader("Saved Invoice Ledger")
+
+records = list_invoices()
+
+if not records:
+    st.info("No invoices saved yet.")
+else:
+    # Convert InvoiceRecord Pydantic models to dictionaries
+    raw_data = [record.model_dump() for record in records]
+
+    # Convert to DataFrame
+    df = pd.DataFrame(raw_data)
+
+    # Directly select expected columns matching InvoiceRecord schema
+    df_display = df[
+        [
+            "id",
+            "vendor",
+            "invoice_number",
+            "invoice_date",
+            "subtotal",
+            "discount",
+            "tax",
+            "total",
+            "currency",
+            "source_filename",
+            "created_at",
+        ]
+    ]
+
+    # Rename columns to user-friendly titles
+    df_display = df_display.rename(
+        columns={
+            "id": "ID",
+            "vendor": "Vendor",
+            "invoice_number": "Invoice Number",
+            "invoice_date": "Invoice Date",
+            "subtotal": "Subtotal",
+            "discount": "Discount",
+            "tax": "Tax",
+            "total": "Total",
+            "currency": "Currency",
+            "source_filename": "Source File",
+            "created_at": "Created At",
+        }
+    )
+
+    # Display in Streamlit dataframe
+    st.dataframe(
+        df_display,
+        use_container_width=True,
+        hide_index=True,
     )
